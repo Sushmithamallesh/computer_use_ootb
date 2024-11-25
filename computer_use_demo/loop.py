@@ -1,6 +1,7 @@
 """
 Agentic sampling loop that calls the Anthropic API and local implenmentation of anthropic-defined computer use tools.
 """
+
 import asyncio
 import platform
 from collections.abc import Callable
@@ -24,7 +25,7 @@ from anthropic.types.beta import (
 from anthropic.types import TextBlock
 from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock
 
-from .tools import BashTool, ComputerTool, EditTool, ToolCollection, ToolResult
+from .tools import ComputerTool, ToolCollection, ToolResult
 
 from PIL import Image
 from io import BytesIO
@@ -65,6 +66,8 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 import base64
 from PIL import Image
 from io import BytesIO
+
+
 def decode_base64_image_and_save(base64_str):
     # 移除base64字符串的前缀（如果存在）
     if base64_str.startswith("data:image"):
@@ -74,9 +77,11 @@ def decode_base64_image_and_save(base64_str):
     image = Image.open(BytesIO(image_data))
     # 保存图像为screenshot.png
     import datetime
+
     image.save(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png")
     print("screenshot saved")
     return f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.png"
+
 
 def decode_base64_image(base64_str):
     # 移除base64字符串的前缀（如果存在）
@@ -182,7 +187,7 @@ def sampling_loop_sync(
     api_key: str,
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
-    selected_screen: int = 0
+    selected_screen: int = 0,
 ):
     """
     Synchronous agentic sampling loop for the assistant/tool interaction of computer use.
@@ -190,25 +195,24 @@ def sampling_loop_sync(
     if model == "claude-3-5-sonnet-20241022":
         # Register Actor and Executor
         actor = AnthropicActor(
-            model=model, 
-            provider=provider, 
-            system_prompt_suffix=system_prompt_suffix, 
-            api_key=api_key, 
+            model=model,
+            provider=provider,
+            system_prompt_suffix=system_prompt_suffix,
+            api_key=api_key,
             api_response_callback=api_response_callback,
             max_tokens=max_tokens,
             only_n_most_recent_images=only_n_most_recent_images,
-            selected_screen=selected_screen
+            selected_screen=selected_screen,
         )
 
         # Register Executor: Function of the Executor is to send messages to ChatRoom or Execute the Action
         executor = AnthropicExecutor(
             output_callback=output_callback,
             tool_output_callback=tool_output_callback,
-            selected_screen=selected_screen
+            selected_screen=selected_screen,
         )
     else:
         raise ValueError(f"Model {model} not supported")
-    
 
     print("Start the loop")
     while True:
@@ -218,16 +222,17 @@ def sampling_loop_sync(
         # Example Action: BetaMessage(id='msg_01FsYVD9PkwPo6Q9vDa2SASb', content=[BetaTextBlock(text="I'll help you open a new tab. First, I'll check if a browser window is already open by taking a screenshot, and then proceed to open a new tab.", type='text'), BetaToolUseBlock(id='toolu_01C9MQvdzehkv457iee8T8M1', input={'action': 'screenshot'}, name='computer', type='tool_use')], model='claude-3-5-sonnet-20241022', role='assistant', stop_reason='tool_use', stop_sequence=None, type='message', usage=BetaUsage(cache_creation_input_tokens=None, cache_read_input_tokens=None, input_tokens=2157, output_tokens=90))
         for message, tool_result_content in executor(response, messages):
             yield message
-    
+
         if not tool_result_content:
             return messages
 
         messages.append({"content": tool_result_content, "role": "user"})
 
+
 def _maybe_filter_to_n_most_recent_images(
     messages: list[BetaMessageParam],
     images_to_keep: int,
-    min_removal_threshold: int = 2, # 10
+    min_removal_threshold: int = 2,  # 10
 ):
     """
     With the assumption that images are screenshots that are of diminishing value as

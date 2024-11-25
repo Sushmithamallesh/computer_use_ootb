@@ -1,6 +1,7 @@
 """
 Agentic sampling loop that calls the Anthropic API and local implenmentation of anthropic-defined computer use tools.
 """
+
 import asyncio
 import platform
 from collections.abc import Callable
@@ -24,7 +25,7 @@ from anthropic.types.beta import (
 from anthropic.types import TextBlock
 from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock
 
-from ...tools import BashTool, ComputerTool, EditTool, ToolCollection, ToolResult
+from ...tools import ComputerTool, ToolCollection, ToolResult
 
 from PIL import Image
 from io import BytesIO
@@ -59,10 +60,10 @@ SYSTEM_PROMPT = f"""<SYSTEM_CAPABILITY>
 
 class AnthropicActor:
     def __init__(
-        self, 
-        model: str, 
-        provider: APIProvider, 
-        system_prompt_suffix: str, 
+        self,
+        model: str,
+        provider: APIProvider,
+        system_prompt_suffix: str,
         api_key: str,
         api_response_callback: Callable[[APIResponse[BetaMessage]], None],
         max_tokens: int = 4096,
@@ -79,13 +80,9 @@ class AnthropicActor:
 
         self.tool_collection = ToolCollection(
             ComputerTool(selected_screen=selected_screen),
-            BashTool(),
-            EditTool(),
         )
 
-        self.system = (
-            f"{SYSTEM_PROMPT}{' ' + system_prompt_suffix if system_prompt_suffix else ''}"
-        )
+        self.system = f"{SYSTEM_PROMPT}{' ' + system_prompt_suffix if system_prompt_suffix else ''}"
 
         # Instantiate the appropriate API client based on the provider
         if provider == APIProvider.ANTHROPIC:
@@ -95,13 +92,11 @@ class AnthropicActor:
         elif provider == APIProvider.BEDROCK:
             self.client = AnthropicBedrock()
 
-    def __call__(
-        self, 
-        *,
-        messages: list[BetaMessageParam]
-    ):
+    def __call__(self, *, messages: list[BetaMessageParam]):
         if self.only_n_most_recent_images:
-            _maybe_filter_to_n_most_recent_images(messages, self.only_n_most_recent_images)
+            _maybe_filter_to_n_most_recent_images(
+                messages, self.only_n_most_recent_images
+            )
 
         # Call the API synchronously
         raw_response = self.client.beta.messages.with_raw_response.create(

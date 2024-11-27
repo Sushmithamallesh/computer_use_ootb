@@ -45,7 +45,8 @@ class AnthropicExecutor:
             # Execute the tool
             if content_block.type == "tool_use":
                 # Run the asynchronous tool execution in a synchronous context
-                result = asyncio.run(
+                loop = asyncio.get_event_loop()
+                result = loop.run_until_complete(
                     self.tool_collection.run(
                         name=content_block.name,
                         tool_input=cast(dict[str, Any], content_block.input),

@@ -18,7 +18,7 @@ from anthropic import APIResponse
 from anthropic.types import TextBlock
 from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock
 from anthropic.types.tool_use_block import ToolUseBlock
-
+from playwright.sync_api import sync_playwright
 from screeninfo import get_monitors
 
 # TODO: I don't know why If don't get monitors here, the screen resolution will be wrong for secondary screen. Seems there are some conflict with computer_use_demo.tools
@@ -77,6 +77,31 @@ def setup_state(state):
         state["custom_system_prompt"] += f"\n\nNOTE: you are operating a {device_os_name} machine"
     if "hide_images" not in state:
         state["hide_images"] = False
+    
+    # Initialize Playwright if not already initialized
+    if "playwright" not in state:
+        try:
+            state["playwright"] = sync_playwright().start()
+            state["browser"] = state["playwright"].chromium.launch(headless=False)  # Set headless=False to see the browser
+            state["page"] = state["browser"].new_page()
+            print("Playwright initialized successfully")
+        except Exception as e:
+            print(f"Failed to initialize Playwright: {e}")
+            state["playwright"] = None
+            state["browser"] = None
+            state["page"] = None
+
+def cleanup_playwright(state):
+    """Clean up Playwright resources"""
+    try:
+        if "page" in state and state["page"]:
+            state["page"].close()
+        if "browser" in state and state["browser"]:
+            state["browser"].close()
+        if "playwright" in state and state["playwright"]:
+            state["playwright"].stop()
+    except Exception as e:
+        print(f"Error during Playwright cleanup: {e}")
 
 
 def _reset_model(state):
@@ -359,3 +384,5 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     submit_button.click(process_input, [chat_input, state], chatbot)
 
 demo.launch(share=True)
+# Add cleanup on app shutdown
+demo.close = lambda: cleanup_playwright(state)

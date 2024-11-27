@@ -1,6 +1,7 @@
+import nest_asyncio
 import asyncio
 from typing import Any, Dict, cast
-from collections.abc import Callable
+from collections.abc import Callable, AsyncGenerator
 from anthropic.types.beta import (
     BetaContentBlock,
     BetaContentBlockParam,
@@ -27,6 +28,11 @@ class AnthropicExecutor:
         )
         self.output_callback = output_callback
         self.tool_output_callback = tool_output_callback
+        try:
+            loop = asyncio.get_running_loop()
+            nest_asyncio.apply()
+        except RuntimeError:
+            pass
 
     def __call__(self, response: BetaMessage, messages: list[BetaMessageParam]):
         new_message = {
@@ -44,14 +50,25 @@ class AnthropicExecutor:
 
             # Execute the tool
             if content_block.type == "tool_use":
-                # Run the asynchronous tool execution in a synchronous context
-                loop = asyncio.get_event_loop()
-                result = loop.run_until_complete(
-                    self.tool_collection.run(
-                        name=content_block.name,
-                        tool_input=cast(dict[str, Any], content_block.input),
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    should_cleanup = True
+                else:
+                    should_cleanup = False
+
+                try:
+                    result = loop.run_until_complete(
+                        self.tool_collection.run(
+                            name=content_block.name,
+                            tool_input=cast(dict[str, Any], content_block.input),
+                        )
                     )
-                )
+                finally:
+                    if should_cleanup:
+                        loop.close()
                 tool_result_content.append(
                     _make_api_tool_result(result, content_block.id)
                 )

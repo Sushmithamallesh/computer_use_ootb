@@ -215,15 +215,20 @@ def process_input(user_input, state):
         yield message
 
 
-def accumulate_messages(*args, **kwargs):
+def accumulate_messages(*args, state, **kwargs):
     """
     Wrapper function to accumulate messages from sampling_loop_sync.
     """
     accumulated_messages = []
     global SELECTED_SCREEN_INDEX    
     print(f"Selected screen: {SELECTED_SCREEN_INDEX}")
-    for message in sampling_loop_sync(*args, selected_screen=SELECTED_SCREEN_INDEX, **kwargs):
-        # Check if the message is already in the accumulated messages
+    for message in sampling_loop_sync(
+        *args, 
+        selected_screen=SELECTED_SCREEN_INDEX, 
+        browser=state["browser"],
+        page=state["page"],  # Add page here
+        **kwargs
+    ):
         if message not in accumulated_messages:
             accumulated_messages.append(message)
             # Yield the accumulated messages as a list
@@ -246,6 +251,7 @@ def yield_message(state):
         api_response_callback=partial(_api_response_callback, response_state=state["responses"]),
         api_key=state["api_key"],
         only_n_most_recent_images=state["only_n_most_recent_images"],
+        state=state,  # Pass the state here
     ):
         yield message
 

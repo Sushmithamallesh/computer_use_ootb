@@ -31,7 +31,7 @@ from PIL import Image
 from io import BytesIO
 import gradio as gr
 from typing import Dict
-
+from playwright.sync_api import Browser, Page
 from computer_use_demo.autopc.actor.anthropic_actor import AnthropicActor
 from computer_use_demo.autopc.executor.anthropic_executor import AnthropicExecutor
 
@@ -185,6 +185,8 @@ def sampling_loop_sync(
     tool_output_callback: Callable[[ToolResult, str], None],
     api_response_callback: Callable[[APIResponse[BetaMessage]], None],
     api_key: str,
+    browser: Browser,
+    page: Page,
     only_n_most_recent_images: int | None = None,
     max_tokens: int = 4096,
     selected_screen: int = 0,

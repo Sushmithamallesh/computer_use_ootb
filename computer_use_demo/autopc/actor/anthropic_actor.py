@@ -8,7 +8,7 @@ from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
-
+from playwright.sync_api import Browser, Page
 from anthropic import Anthropic, AnthropicBedrock, AnthropicVertex, APIResponse
 from anthropic.types import (
     ToolResultBlockParam,
@@ -66,6 +66,8 @@ class AnthropicActor:
         system_prompt_suffix: str,
         api_key: str,
         api_response_callback: Callable[[APIResponse[BetaMessage]], None],
+        browser: Browser,
+        page: Page,
         max_tokens: int = 4096,
         only_n_most_recent_images: int | None = None,
         selected_screen: int = 0,
@@ -77,9 +79,10 @@ class AnthropicActor:
         self.api_response_callback = api_response_callback
         self.max_tokens = max_tokens
         self.only_n_most_recent_images = only_n_most_recent_images
-
+        self.browser = browser
+        self.page = page
         self.tool_collection = ToolCollection(
-            ComputerTool(selected_screen=selected_screen),
+            ComputerTool(selected_screen=selected_screen, browser=browser, page=page),
         )
 
         self.system = f"{SYSTEM_PROMPT}{' ' + system_prompt_suffix if system_prompt_suffix else ''}"

@@ -19,7 +19,7 @@ from anthropic.types.beta import BetaToolComputerUse20241022Param
 
 from .base import BaseAnthropicTool, ToolError, ToolResult
 from .run import run
-
+from playwright.sync_api import Browser, Page
 OUTPUT_DIR = "./tmp/outputs"
 
 TYPING_DELAY_MS = 12
@@ -123,7 +123,7 @@ class ComputerTool(BaseAnthropicTool):
     def to_params(self) -> BetaToolComputerUse20241022Param:
         return {"name": self.name, "type": self.api_type, **self.options}
 
-    def __init__(self, selected_screen: int = 0):
+    def __init__(self, selected_screen: int = 0, browser: Browser = None, page: Page = None):
         super().__init__()
 
         # Get screen width and height using Windows command
@@ -131,7 +131,9 @@ class ComputerTool(BaseAnthropicTool):
         self.offset_x = 0
         self.offset_y = 0
         self.selected_screen = selected_screen   
-        self.width, self.height = self.get_screen_size()     
+        self.width, self.height = self.get_screen_size()   
+        self.browser = browser
+        self.page = page
 
         # Path to cliclick
         self.cliclick = "cliclick"

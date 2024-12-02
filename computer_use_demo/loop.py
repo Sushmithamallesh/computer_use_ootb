@@ -205,6 +205,8 @@ def sampling_loop_sync(
             max_tokens=max_tokens,
             only_n_most_recent_images=only_n_most_recent_images,
             selected_screen=selected_screen,
+            browser=browser,
+            page=page,
         )
 
         # Register Executor: Function of the Executor is to send messages to ChatRoom or Execute the Action

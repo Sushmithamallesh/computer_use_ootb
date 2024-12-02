@@ -234,87 +234,25 @@ class ComputerTool(BaseAnthropicTool):
         output_dir = Path(OUTPUT_DIR)
         output_dir.mkdir(parents=True, exist_ok=True)
         path = output_dir / f"screenshot_{uuid4().hex}.png"
-
-        ImageGrab.grab = partial(ImageGrab.grab, all_screens=True)
-
-        # Detect platform
-        system = platform.system()
-
-        if system == "Windows":
-            # Windows: Use screeninfo to get monitor details
-            screens = get_monitors()
-
-            # Sort screens by x position to arrange from left to right
-            sorted_screens = sorted(screens, key=lambda s: s.x)
-
-            if self.selected_screen < 0 or self.selected_screen >= len(screens):
-                raise IndexError("Invalid screen index.")
-
-            screen = sorted_screens[self.selected_screen]
-            bbox = (screen.x, screen.y, screen.x + screen.width, screen.y + screen.height)
-
-        elif system == "Darwin":  # macOS
-            # macOS: Use Quartz to get monitor details
-            max_displays = 32  # Maximum number of displays to handle
-            active_displays = Quartz.CGGetActiveDisplayList(max_displays, None, None)[1]
-
-            # Get the display bounds (resolution) for each active display
-            screens = []
-            for display_id in active_displays:
-                bounds = Quartz.CGDisplayBounds(display_id)
-                screens.append({
-                    'id': display_id,
-                    'x': int(bounds.origin.x),
-                    'y': int(bounds.origin.y),
-                    'width': int(bounds.size.width),
-                    'height': int(bounds.size.height),
-                    'is_primary': Quartz.CGDisplayIsMain(display_id)  # Check if this is the primary display
-                })
-
-            # Sort screens by x position to arrange from left to right
-            sorted_screens = sorted(screens, key=lambda s: s['x'])
-
-            if self.selected_screen < 0 or self.selected_screen >= len(screens):
-                raise IndexError("Invalid screen index.")
-
-            screen = sorted_screens[self.selected_screen]
-            bbox = (screen['x'], screen['y'], screen['x'] + screen['width'], screen['y'] + screen['height'])
-
-        else:  # Linux or other OS
-            cmd = "xrandr | grep ' primary' | awk '{print $4}'"
-            try:
-                output = subprocess.check_output(cmd, shell=True).decode()
-                resolution = output.strip().split()[0]
-                width, height = map(int, resolution.split('x'))
-                bbox = (0, 0, width, height)  # Assuming single primary screen for simplicity
-            except subprocess.CalledProcessError:
-                raise RuntimeError("Failed to get screen resolution on Linux.")
-
-        # Take screenshot using the bounding box
-        screenshot = ImageGrab.grab(bbox=bbox)
-
-        # Set offsets (for potential future use)
-        self.offset_x = screen['x'] if system == "Darwin" else screen.x
-        self.offset_y = screen['y'] if system == "Darwin" else screen.y
-
-        if not hasattr(self, 'target_dimension'):
-            screenshot = self.padding_image(screenshot)
-            self.target_dimension = MAX_SCALING_TARGETS["WXGA"]
-
-        # Resize if target_dimensions are specified
-        print(f"offset is {self.offset_x}, {self.offset_y}")
-        print(f"target_dimension is {self.target_dimension}")
-        screenshot = screenshot.resize((self.target_dimension["width"], self.target_dimension["height"]))
-
-
-        # Save the screenshot
-        screenshot.save(str(path))
-
-        if path.exists():
-            # Return a ToolResult instance instead of a dictionary
-            return ToolResult(base64_image=base64.b64encode(path.read_bytes()).decode())
         
-        raise ToolError(f"Failed to take screenshot: {path} does not exist.")
+        try:
+            if not self.page:
+                raise ToolError("No browser page is available")
+            
+            self.page.screenshot(path=str(path), full_page=True)
+            print(f"screenshot saved to {path}")
+            
+            if path.exists():
+                print(f"Reading file at {path}")
+                file_bytes = path.read_bytes()
+                print(f"File read, encoding to base64")
+                base64_str = base64.b64encode(file_bytes).decode()
+                return ToolResult(base64_image=base64_str)
+            
+            raise ToolError(f"Failed to take screenshot: {path} does not exist.")
+        except Exception as e:
+            print(f"Exception details: {type(e)}")
+            raise ToolError(f"Screenshot failed: {str(e)}")
 
     def padding_image(self, screenshot):
         """Pad the screenshot to 16:10 aspect ratio, when the aspect ratio is not 16:10."""

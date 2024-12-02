@@ -213,6 +213,7 @@ def sampling_loop_sync(
         executor = AnthropicExecutor(
             output_callback=output_callback,
             tool_output_callback=tool_output_callback,
+            tool_collection=actor.tool_collection,
             selected_screen=selected_screen,
         )
     else:

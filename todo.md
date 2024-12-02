@@ -1,0 +1,2 @@
+- Add proper browser initialization to ease automation
+- Add mulitple tab management support
